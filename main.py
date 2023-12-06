@@ -2,6 +2,7 @@ import datetime as dt
 import matplotlib.pyplot as plt
 from matplotlib import style
 from mpl_finance import candlestick_ohlc
+
 import matplotlib.dates as mdates
 import numpy as np
 import seaborn as sns
@@ -20,83 +21,92 @@ style.use('ggplot')
 start = dt.datetime(2000,1,1)
 end = dt.datetime(2022,12,31)
 
+stock_symbol = 'TSLA'
+
+# Download stock data from Yahoo Finance
+df = yf.download(stock_symbol, start=start, end=end)
+df.to_csv('Tesla.csv')
+
+
+
+
+# Tesla closing prices plotted
 df = pd.read_csv('Tesla.csv',parse_dates=True,index_col=0)
+print(df.head())
+
+df['Adj Close'].plot()
+plt.show()
 
 
-#Tesla closing prices plotted
-# df['Adj Close'].plot()
-# plt.show()
 
-# df['100ma'] = df['Adj Close'].rolling(window=100).mean()
-
-#Since there are too many datapoints,we will resample the data for 10 days i.e convert 10 day data into 1 point to
+#Since there are too many datapoints,we will resample the data for 10 days i.e convert 10 day data into 1 point to make
 #it easier for us to understand the data
 #df_ohlc - ohlc stands for Open High Low Close.In Financial Markets,the stock prices are generally represented with
 #the help of candlestick charts,the candlestick chart represent Open,High Low and Close
 #we use the resample.ohlc method inbuilt in pandas to convert the data into 10 day data
 #For Volume in place of taking the ohlc or mean,we take the sum over 10 days
+df['100ma'] = df['Adj Close'].rolling(window=100).mean()
 
 
-# print(df.head())
+print(df.head())
+print(df.tail())
 
-# # #Candlestick representation:
-# df_ohlc = df['Adj Close'].resample('10D').ohlc()
-# df_volume = df['Volume'].resample('10D').sum()
+#Candlestick representation:
+df_ohlc = df['Adj Close'].resample('10D').ohlc()
+df_volume = df['Volume'].resample('10D').sum()
+df_ohlc.reset_index(inplace=True)
+df_ohlc['Date'] = df_ohlc['Date'].map(mdates.date2num)
+print(df_ohlc.head())
 
-# df_ohlc.reset_index(inplace=True)
 
-# df_ohlc['Date'] = df_ohlc['Date'].map(mdates.date2num)
+# Plotting candlestick chart
+ax1 = plt.subplot2grid((6,1) ,(0,0), rowspan=5, colspan=1)
+ax2 = plt.subplot2grid((6,1) ,(5,0), rowspan=1, colspan=1, sharex=ax1)
+ax1.xaxis_date()
+candlestick_ohlc(ax1, df_ohlc.values, width=2, colorup='g')
+ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0)
+plt.show()
 
+#Tesla correlation with 25 other companies
+def tesla_corr_heatmap():
+    df2 = pd.read_csv('S&P500_joined_closes.csv').fillna(value = 0)
+    df1 = pd.read_csv('Tesla.csv').fillna(value = 0)
 
-# print(df_ohlc.head())
+    # print(df2.describe)
+    print(df1.head())
+    print(df2.head())
 
-# #Visualising price,volume of the data
-# ax1 = plt.subplot2grid((6,1) ,(0,0), rowspan=5, colspan=1)
-# ax2 = plt.subplot2grid((6,1) ,(5,0), rowspan=1, colspan=1, sharex=ax1)
-# ax1.xaxis_date()
-# candlestick_ohlc(ax1, df_ohlc.values, width=2, colorup='g')
-# ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0)
-# plt.show()
+    correlation = df1["Adj Close"].corr(df2["MMM"])
 
-# ##Tesla correlation with 25 other companies
-# def tesla_corr_heatmap():
-#     df2 = pd.read_csv('S&P500_joined_closes.csv').fillna(value = 0)
-#     df1 = pd.read_csv('Tesla.csv').fillna(value = 0)
-
-#     # print(df2.describe)
-#     print(df1.head())
-#     print(df2.head())
-
-#     correlation = df1["Adj Close"].corr(df2["MMM"])
-
-#     print(df1["Adj Close"].isna().any())
-#     # for column in df2:
-#     #     print(df2[column])
-#     corr_arr = []
-#     tickers = []
-#     for column in df2.columns[1:]:
-#         print(df2[column].isna().any())
-#         corr_arr.append(df1["Adj Close"].corr(df2[column]))
-#         tickers.append(column)
+    print(df1["Adj Close"].isna().any())
+    # for column in df2:
+    #     print(df2[column])
+    corr_arr = []
+    tickers = []
+    for column in df2.columns[1:]:
+        print(df2[column].isna().any())
+        corr_arr.append(df1["Adj Close"].corr(df2[column]))
+        tickers.append(column)
     
-#     print(corr_arr)
-#     print(tickers)
+    print(corr_arr)
+    print(tickers)
 
-#     plt.figure(figsize=(12, 6)) 
-#     plt.bar(tickers,corr_arr)
-#     plt.xlabel('Stock Codes')
-#     plt.ylabel('Correlation')
-#     plt.title('Correlation of Tesla with S&P 500 Stocks')
-#     plt.xticks(rotation=90)
-#     plt.show()
+    plt.figure(figsize=(12, 6)) 
+    plt.bar(tickers,corr_arr)
+    plt.xlabel('Stock Codes')
+    plt.ylabel('Correlation')
+    plt.title('Correlation of Tesla with S&P 500 Stocks')
+    plt.xticks(rotation=90)
+    plt.show()
 
-    # print(correlation)
-
-
-# tesla_corr_heatmap()
+    print(correlation)
 
 
-#Visualising part is completee
+tesla_corr_heatmap()
+
+
+#Visualising part is complete
+
 #Now analyze the results of all the data that we have
 
 #We can start with predicting the stock prices with linear regression
@@ -115,11 +125,14 @@ def df_plot(data, x, y, title="", xlabel='Date', ylabel='Value', dpi=100):
 
 stock_name= "TESLA"
 title = (stock_name,"History stock performance till date")
-# df_plot(df , x , y , title=title,xlabel='Date', ylabel='Value',dpi=100)
+
+df_plot(df , x , y , title=title,xlabel='Date', ylabel='Value',dpi=100)
 
 df.reset_index(inplace=True) # to reset index and convert it to column
 df.drop(columns=['Close'], inplace=True)
-print(df.head(2))
+
+
+
 print(df.describe())
 print(len(df))
 
@@ -157,16 +170,19 @@ print(test_x.shape)
 print(train_y.shape)
 print(test_y.shape)
 
+
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import mean_squared_error, r2_score
+
 regression = LinearRegression()
 regression.fit(train_x, train_y)
 print("regression coefficient",regression.coef_)
 print("regression intercept",regression.intercept_)
 
-# #Here we will compute the coefficient of determination denoted by R², which takes values between 0 and 1, the higher the value R² the more successful the linear regression is at explaining the variation of Y values, in our case the Y values represent the close stock prices of the subjected company. The below is the math behind The coefficient of determination R²
+#Here we will compute the coefficient of determination denoted by R², which takes values between 0 and 1, the higher the value R² the more successful the linear regression is at explaining the variation of Y values, in our case the Y values represent the close stock prices of the subjected company. The below is the math behind The coefficient of determination R²
 
-# # the coefficient of determination R² 
+# the coefficient of determination R² 
 regression_confidence = regression.score(test_x, test_y)
 print("linear regression confidence: ", regression_confidence)
 
@@ -174,11 +190,12 @@ print("linear regression confidence: ", regression_confidence)
 predicted=regression.predict(test_x)
 print(test_x.head())
 
-# print(predicted.shape)
+print(predicted.shape)
 
 
 dfr=pd.DataFrame({'Actual_Price':test_y, 'Predicted_Price':predicted})
 #Adding actual dates to the newly created dataframe to make it easier to understand
+print(dfr.head())
 num_data_points = len(dfr)
 print(num_data_points)
 start_date = '2021-01-29'  # Replace with your desired start date
@@ -188,7 +205,7 @@ dfr['Date'] = date_range
 
 print(dfr.head(10))
 print(dfr.describe())
-
+dfr.to_csv('ActualvPredicted_prices.csv')
 
 #Accuracy of the model
 x2 = dfr.Actual_Price.mean()
@@ -217,3 +234,9 @@ plt.legend(fontsize="x-large")
 plt.xticks(rotation=45)
 plt.show()
 
+mse = mean_squared_error(test_y, predicted)
+print(f'Mean Squared Error: {mse}')
+
+# R-squared
+r2 = r2_score(test_y, predicted)
+print(f'R-squared: {r2}')
